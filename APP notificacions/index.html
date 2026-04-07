@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Recordatori</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#111111" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Recordatori" />
+<link rel="apple-touch-icon" href="/icon.svg" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.2);
+    --text: #111111;
+    --text-muted: #666666;
+    --text-faint: #999999;
+    --accent: #111111;
+    --accent-fg: #ffffff;
+    --green-bg: #eaf3de;
+    --green-text: #27500a;
+    --green-dot: #639922;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111111;
+      --surface: #1e1e1e;
+      --border: rgba(255,255,255,0.1);
+      --border-strong: rgba(255,255,255,0.2);
+      --text: #f0f0f0;
+      --text-muted: #999999;
+      --text-faint: #666666;
+      --accent: #f0f0f0;
+      --accent-fg: #111111;
+      --green-bg: #17340a;
+      --green-text: #a3d46e;
+      --green-dot: #639922;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 0 8px;
+  }
+
+  .bell { font-size: 24px; }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+    padding: 18px;
+  }
+
+  .card-label {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+
+  textarea {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 16px;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: none;
+    min-height: 80px;
+  }
+
+  textarea::placeholder { color: var(--text-faint); }
+
+  .quick-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text-muted);
+    border: 0.5px solid var(--border);
+    cursor: pointer;
+    transition: all 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pill:active { opacity: 0.6; transform: scale(0.95); }
+
+  .interval-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .interval-num {
+    flex: 1;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 500;
+    text-align: center;
+    padding: 10px;
+    outline: none;
+    font-family: inherit;
+  }
+
+  .unit-btns {
+    display: flex;
+    gap: 6px;
+    flex: 2;
+  }
+
+  .unit-btn {
+    flex: 1;
+    padding: 10px 4px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .unit-btn.active {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+
+  .unit-btn:active { opacity: 0.7; }
+
+  .preset-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: all 0.3s;
+  }
+
+  .status-bar.on {
+    background: var(--green-bg);
+    color: var(--green-text);
+    border-color: transparent;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+
+  .dot.on {
+    background: var(--green-dot);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 15px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.15s;
+  }
+
+  .btn:active { opacity: 0.7; transform: scale(0.98); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+
+  .btn-stop {
+    background: #fcebeb;
+    color: #a32d2d;
+    border-color: #f7c1c1;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .btn-stop { background: #2d1010; color: #f09595; border-color: #4a1515; }
+  }
+
+  .btn-test {
+    flex: 0 0 auto;
+    padding: 15px 18px;
+    font-size: 20px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 10px;
+  }
+
+  .stat {
+    flex: 1;
+    text-align: center;
+    padding: 16px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+  }
+
+  .stat-num { font-size: 28px; font-weight: 500; }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .warn {
+    background: #faeeda;
+    color: #633806;
+    border: 0.5px solid #fac775;
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .warn { background: #2a1800; color: #fac775; border-color: #633806; }
+  }
+
+  .hist-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 14px;
+    gap: 12px;
+  }
+
+  .hist-item:last-child { border-bottom: none; }
+  .hist-msg { color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-time { color: var(--text-faint); font-size: 12px; flex-shrink: 0; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="bell">🔔</span>
+  <h1>Recordatori</h1>
+</header>
+
+<div class="card">
+  <div class="card-label">Missatge</div>
+  <textarea id="msg" placeholder="Escriu el teu recordatori aquí…" rows="3"></textarea>
+  <div class="quick-pills">
+    <button class="pill" onclick="setMsg('Recorda beure aigua! 💧')">Aigua 💧</button>
+    <button class="pill" onclick="setMsg('Fes una pausa i estira\'t 🧘')">Pausa 🧘</button>
+    <button class="pill" onclick="setMsg('Comprova la teva postura 💪')">Postura 💪</button>
+    <button class="pill" onclick="setMsg('Respira profundament 🌬️')">Respira 🌬️</button>
+    <button class="pill" onclick="setMsg('Hora de moure\'s! 🚶')">Moure\'s 🚶</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-label">Interval</div>
+  <div class="interval-row">
+    <input type="number" id="intervalNum" class="interval-num" value="30" min="1" max="9999" />
+    <div class="unit-btns">
+      <button class="unit-btn" id="u-s" onclick="setUnit('s')">seg</button>
+      <button class="unit-btn active" id="u-m" onclick="setUnit('m')">min</button>
+      <button class="unit-btn" id="u-h" onclick="setUnit('h')">hores</button>
+    </div>
+  </div>
+  <div class="preset-row">
+    <button class="pill" onclick="setPreset(5,'m')">5 min</button>
+    <button class="pill" onclick="setPreset(15,'m')">15 min</button>
+    <button class="pill" onclick="setPreset(30,'m')">30 min</button>
+    <button class="pill" onclick="setPreset(1,'h')">1 hora</button>
+    <button class="pill" onclick="setPreset(2,'h')">2 hores</button>
+  </div>
+</div>
+
+<div id="warn" class="warn">Les notificacions estan bloquejades. Ves a Ajustos → Navegador → Notificacions i permet-les per a aquesta pàgina.</div>
+
+<div id="statusBar" class="status-bar">
+  <div class="dot" id="dot"></div>
+  <span id="statusText">Inactiu</span>
+</div>
+
+<div class="btn-row">
+  <button class="btn btn-primary" id="mainBtn" onclick="toggle()">Activar</button>
+  <button class="btn btn-test" onclick="testNow()" title="Provar ara">▶</button>
+</div>
+
+<div id="stats" class="stats hidden">
+  <div class="stat">
+    <div class="stat-num" id="sentCount">0</div>
+    <div class="stat-label">enviades</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="nextIn">—</div>
+    <div class="stat-label">proper</div>
+  </div>
+</div>
+
+<div id="histCard" class="card hidden">
+  <div class="card-label">Historial</div>
+  <div id="hist"></div>
+</div>
+
+<script>
+let sw = null, active = false, sent = 0, history = [], unit = 'm';
+let nextTick = null, cdTimer = null;
+
+async function init() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    sw = navigator.serviceWorker.controller || reg.active;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      sw = navigator.serviceWorker.controller;
+    });
+  } catch(e) { console.warn('SW error:', e); }
+
+  const saved = localStorage.getItem('recordatori');
+  if (saved) {
+    const d = JSON.parse(saved);
+    if (d.msg) document.getElementById('msg').value = d.msg;
+    if (d.interval) document.getElementById('intervalNum').value = d.interval;
+    if (d.unit) { unit = d.unit; updateUnitBtns(); }
+    sent = d.sent || 0;
+    history = d.history || [];
+    document.getElementById('sentCount').textContent = sent;
+    renderHist();
+  }
+}
+
+function save() {
+  localStorage.setItem('recordatori', JSON.stringify({
+    msg: document.getElementById('msg').value,
+    interval: document.getElementById('intervalNum').value,
+    unit, sent, history
+  }));
+}
+
+function setMsg(m) { document.getElementById('msg').value = m; }
+function setUnit(u) { unit = u; updateUnitBtns(); }
+function setPreset(v, u) { document.getElementById('intervalNum').value = v; setUnit(u); }
+
+function updateUnitBtns() {
+  ['s','m','h'].forEach(u => {
+    document.getElementById('u-'+u).classList.toggle('active', u === unit);
+  });
+}
+
+function getMs() {
+  const v = parseInt(document.getElementById('intervalNum').value) || 1;
+  if (unit === 's') return v * 1000;
+  if (unit === 'm') return v * 60 * 1000;
+  return v * 3600 * 1000;
+}
+
+function formatInterval() {
+  const v = document.getElementById('intervalNum').value;
+  const labels = { s: 'seg', m: 'min', h: v == 1 ? 'hora' : 'hores' };
+  return v + ' ' + labels[unit];
+}
+
+function updateCountdown() {
+  if (!nextTick) return;
+  const diff = Math.max(0, nextTick - Date.now());
+  const s = Math.ceil(diff / 1000);
+  const m = Math.floor(s / 60), sec = s % 60;
+  document.getElementById('nextIn').textContent = m > 0 ? m + 'm ' + sec + 's' : sec + 's';
+}
+
+async function toggle() {
+  if (active) { stop(); return; }
+  const msg = document.getElementById('msg').value.trim();
+  if (!msg) { document.getElementById('msg').focus(); return; }
+
+  if (!('Notification' in window)) { alert('El teu navegador no suporta notificacions.'); return; }
+
+  let perm = Notification.permission;
+  if (perm !== 'granted') perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    document.getElementById('warn').style.display = 'block'; return;
+  }
+  document.getElementById('warn').style.display = 'none';
+  start();
+}
+
+function start() {
+  active = true;
+  const ms = getMs();
+  const msg = document.getElementById('msg').value.trim();
+  nextTick = Date.now() + ms;
+  if (sw) sw.postMessage({ type: 'START', ms, message: msg });
+  cdTimer = setInterval(updateCountdown, 1000);
+  updateUI(); save();
+  document.getElementById('stats').classList.remove('hidden');
+}
+
+function stop() {
+  active = false;
+  if (sw) sw.postMessage({ type: 'STOP' });
+  clearInterval(cdTimer);
+  nextTick = null;
+  document.getElementById('nextIn').textContent = '—';
+  updateUI(); save();
+}
+
+function testNow() {
+  const msg = document.getElementById('msg').value.trim() || 'Recordatori de prova!';
+  if (Notification.permission === 'granted') {
+    if (sw) sw.postMessage({ type: 'TEST', message: msg });
+    else new Notification('Recordatori', { body: msg, icon: '/icon.svg' });
+    addHistory(msg);
+  } else {
+    toggle();
+  }
+}
+
+function addHistory(msg) {
+  sent++;
+  const time = new Date().toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' });
+  history.unshift({ msg: msg.length > 45 ? msg.slice(0,45)+'…' : msg, time });
+  if (history.length > 15) history.pop();
+  document.getElementById('sentCount').textContent = sent;
+  document.getElementById('histCard').classList.remove('hidden');
+  renderHist();
+  save();
+}
+
+function renderHist() {
+  if (!history.length) return;
+  document.getElementById('histCard').classList.remove('hidden');
+  document.getElementById('hist').innerHTML = history.map(h =>
+    `<div class="hist-item"><span class="hist-msg">${h.msg}</span><span class="hist-time">${h.time}</span></div>`
+  ).join('');
+}
+
+function updateUI() {
+  const btn = document.getElementById('mainBtn');
+  const dot = document.getElementById('dot');
+  const bar = document.getElementById('statusBar');
+  const stTxt = document.getElementById('statusText');
+  if (active) {
+    btn.textContent = 'Aturar';
+    btn.className = 'btn btn-stop';
+    dot.className = 'dot on';
+    bar.className = 'status-bar on';
+    stTxt.textContent = 'Actiu · cada ' + formatInterval();
+  } else {
+    btn.textContent = 'Activar';
+    btn.className = 'btn btn-primary';
+    dot.className = 'dot';
+    bar.className = 'status-bar';
+    stTxt.textContent = 'Inactiu';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
